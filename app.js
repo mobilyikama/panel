@@ -1,4 +1,4 @@
-﻿// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 //  MOBİL YIKAMA CRM v2 — Tam Özellikli
 // ═══════════════════════════════════════════════════════════
 
@@ -638,7 +638,7 @@ async function renderFinance() {
 // ═══════════════════════════════════════════════════════════
 //  MODAL: RANDEVU EKLE
 // ═══════════════════════════════════════════════════════════
-function openAddAppointment(customerId, customerName, customerPhone, customerAddress) {
+async function openAddAppointment(customerId, customerName, customerPhone, customerAddress) {
   const now = new Date();
   const dateStr = now.toISOString().slice(0,16);
   const customers = await DB.getCustomers();
@@ -826,7 +826,7 @@ async function saveCustomer(editId) {
 // ═══════════════════════════════════════════════════════════
 //  MODAL: GELİR / GİDER EKLE
 // ═══════════════════════════════════════════════════════════
-function openAddIncome() {
+async function openAddIncome() {
   const customers = await DB.getCustomers();
   const now = new Date().toISOString().slice(0,10);
   openModal('💰 Gelir Ekle', `
