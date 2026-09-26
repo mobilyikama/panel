@@ -105,7 +105,7 @@ function showLoading(mc) {
 
 async function render() {
   if (!window.DB) return; // DB henüz hazır değil
-    await updateTopBar();
+  await updateTopBar();
 
   if (isDesktop()) {
     const mc = document.getElementById('mainContent');
@@ -148,7 +148,7 @@ async function render() {
 }
 
 
-function updateTopBar() {
+async function updateTopBar() {
   // Mobile topbar
   const actions = document.getElementById('topBarActions');
   const fab = document.getElementById('fabBtn');
