@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <meta name="theme-color" content="#0A0F1E"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Yıkama CRM"/>
+  <meta name="description" content="Mobil Yıkama Müşteri ve Finans Takip Sistemi"/>
+  <title>Mobil Yıkama CRM</title>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icon.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+     LOGIN SCREEN
+════════════════════════════════════════════════════ -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-bg">
+    <div class="login-orb login-orb-1"></div>
+    <div class="login-orb login-orb-2"></div>
+    <div class="login-orb login-orb-3"></div>
+  </div>
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon">🚿</div>
+      <div class="login-logo-name">Mobil Yıkama</div>
+      <div class="login-logo-tag">CRM & Finans Takip Sistemi</div>
+    </div>
+    <div class="login-divider"></div>
+    <div class="login-welcome">
+      <div class="login-welcome-title">Hoş Geldiniz</div>
+      <div class="login-welcome-sub">Devam etmek için Google hesabınızla giriş yapın</div>
+    </div>
+    <button class="google-btn" id="googleSignInBtn" onclick="signInWithGoogle()">
+      <svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      <span>Google ile Giriş Yap</span>
+    </button>
+    <div class="login-error hidden" id="loginError"></div>
+    <div class="login-loading hidden" id="loginLoading">
+      <div class="login-spinner"></div>
+      <span>Giriş yapılıyor...</span>
+    </div>
+    <div class="login-footer">
+      <div class="login-footer-text">Verileriniz güvenli ve yalnızca sizin hesabınıza özel 🔒</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     DESKTOP LAYOUT
+════════════════════════════════════════════════════ -->
+<div id="desktopLayout" class="desktop-layout hidden">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">🚿</div>
+      <div class="sidebar-logo-text">
+        <div class="sidebar-brand">Mobil Yıkama</div>
+        <div class="sidebar-tagline">CRM & Finans</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button class="sidebar-nav-item active" onclick="navigate('home')" id="snav-home">
+        <span class="snav-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        </span>
+        <span class="snav-label">Genel Bakış</span>
+      </button>
+      <button class="sidebar-nav-item" onclick="navigate('appointments')" id="snav-appointments">
+        <span class="snav-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </span>
+        <span class="snav-label">Randevular</span>
+        <span class="snav-badge" id="snav-badge-appt" style="display:none"></span>
+      </button>
+      <button class="sidebar-nav-item" onclick="navigate('customers')" id="snav-customers">
+        <span class="snav-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </span>
+        <span class="snav-label">Müşteriler</span>
+      </button>
+      <button class="sidebar-nav-item" onclick="navigate('finance')" id="snav-finance">
+        <span class="snav-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </span>
+        <span class="snav-label">Kasa & Finans</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-quick-actions">
+      <div class="sidebar-section-label">Hızlı İşlem</div>
+      <button class="sidebar-quick-btn primary-q" onclick="openAddAppointment()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Yeni Randevu
+      </button>
+      <button class="sidebar-quick-btn success-q" onclick="openAddIncome()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        Gelir Ekle
+      </button>
+      <button class="sidebar-quick-btn danger-q" onclick="openAddExpense()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
+        Gider Ekle
+      </button>
+    </div>
+
+    <!-- User Profile -->
+    <div class="sidebar-user" id="sidebarUser">
+      <div class="sidebar-user-avatar" id="sidebarUserAvatar">?</div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name" id="sidebarUserName">Kullanıcı</div>
+        <div class="sidebar-user-email" id="sidebarUserEmail"></div>
+      </div>
+      <button class="sidebar-logout-btn" onclick="signOut()" title="Çıkış Yap">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-footer-time" id="sidebarTime"></div>
+      <div class="sidebar-footer-date" id="sidebarDate"></div>
+    </div>
+  </aside>
+
+  <!-- MAIN AREA -->
+  <main class="desktop-main" id="desktopMain">
+    <header class="desktop-topbar" id="desktopTopbar">
+      <div class="desktop-topbar-left" id="desktopTopbarLeft">
+        <div class="desktop-page-title" id="desktopPageTitle">Genel Bakış</div>
+        <div class="desktop-page-sub" id="desktopPageSub">Hoş geldiniz 👋</div>
+      </div>
+      <div class="desktop-topbar-right" id="desktopTopbarRight"></div>
+    </header>
+    <div class="desktop-content" id="mainContent"></div>
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     MOBILE LAYOUT
+════════════════════════════════════════════════════ -->
+<div id="app" class="mobile-only hidden">
+  <header class="top-bar" id="topBar">
+    <div class="top-bar-brand">
+      <div class="top-bar-icon">🚿</div>
+      <div>
+        <div class="top-bar-name">Mobil Yıkama</div>
+        <div class="top-bar-sub">CRM & Finans Takibi</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="top-bar-actions" id="topBarActions"></div>
+      <button class="mobile-user-btn" id="mobileUserBtn" onclick="showMobileUserMenu()" title="Hesap">
+        <div class="mobile-user-avatar" id="mobileUserAvatar">?</div>
+      </button>
+    </div>
+  </header>
+  <main class="main-content mobile-main-content" id="mainContentMobile"></main>
+  <button class="fab" id="fabBtn" onclick="fabAction()">＋</button>
+  <nav class="bottom-nav">
+    <button class="nav-btn active" onclick="navigate('home')" id="nav-home">
+      <div class="nav-icon-wrap">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      </div>
+      <span class="nav-label">Özet</span>
+    </button>
+    <button class="nav-btn" onclick="navigate('appointments')" id="nav-appointments">
+      <div class="nav-icon-wrap">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      </div>
+      <span class="nav-label">Randevu</span>
+    </button>
+    <button class="nav-btn" onclick="navigate('customers')" id="nav-customers">
+      <div class="nav-icon-wrap">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <span class="nav-label">Müşteri</span>
+    </button>
+    <button class="nav-btn" onclick="navigate('finance')" id="nav-finance">
+      <div class="nav-icon-wrap">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      </div>
+      <span class="nav-label">Finans</span>
+    </button>
+  </nav>
+</div>
+
+<!-- Mobile User Menu -->
+<div id="mobileUserMenu" class="mobile-user-menu hidden">
+  <div class="mum-backdrop" onclick="hideMobileUserMenu()"></div>
+  <div class="mum-card">
+    <div class="mum-avatar" id="mumAvatar">?</div>
+    <div class="mum-name" id="mumName">Kullanıcı</div>
+    <div class="mum-email" id="mumEmail"></div>
+    <button class="mum-logout" onclick="signOut()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Çıkış Yap
+    </button>
+  </div>
+</div>
+
+<!-- OVERLAYS -->
+<div id="modalOverlay" class="modal-overlay hidden" onclick="closeModal()"></div>
+<div id="modal" class="modal hidden"></div>
+<div id="toast" class="toast hidden"></div>
+
+<!-- ════════════════════════════════════════════════════
+     FIREBASE SDK
+════════════════════════════════════════════════════ -->
+<script type="module">
+  import { initializeApp }             from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut as fbSignOut }
+                                        from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+  import { getFirestore, doc, collection, getDocs, setDoc, deleteDoc, onSnapshot, query, orderBy }
+                                        from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+  // ══════════════════════════════════════════════════
+  // 🔥 FIREBASE CONFIG — mobilyikama projesi
+  // ══════════════════════════════════════════════════
+  const firebaseConfig = {
+    apiKey:            "AIzaSyAu-k0rtdPOgUDsU12c1tlWSZx24l47Pnw",
+    authDomain:        "mobilyikama-20962.firebaseapp.com",
+    projectId:         "mobilyikama-20962",
+    storageBucket:     "mobilyikama-20962.firebasestorage.app",
+    messagingSenderId: "1026049106759",
+    appId:             "1:1026049106759:web:85760b73b7d8a2be50a262",
+    measurementId:     "G-4LVJTXY0GQ"
+  };
+  // ══════════════════════════════════════════════════
+
+
+
+  const app      = initializeApp(firebaseConfig);
+  const auth     = getAuth(app);
+  const db       = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+
+  let currentUser = null;
+  let unsubscribeListeners = [];
+
+  // ── Global fonksiyonları window'a ata ──────────────
+  window.signInWithGoogle = async () => {
+    document.getElementById('loginLoading').classList.remove('hidden');
+    document.getElementById('loginError').classList.add('hidden');
+    document.getElementById('googleSignInBtn').classList.add('hidden');
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (e) {
+      document.getElementById('loginLoading').classList.add('hidden');
+      document.getElementById('googleSignInBtn').classList.remove('hidden');
+      const errEl = document.getElementById('loginError');
+      errEl.textContent = 'Giriş başarısız: ' + (e.message || 'Bilinmeyen hata');
+      errEl.classList.remove('hidden');
+    }
+  };
+
+  window.signOut = async () => {
+    try {
+      // Tüm dinleyicileri kapat
+      unsubscribeListeners.forEach(fn => fn());
+      unsubscribeListeners = [];
+      await fbSignOut(auth);
+    } catch(e) {}
+  };
+
+  window.showMobileUserMenu = () => document.getElementById('mobileUserMenu').classList.remove('hidden');
+  window.hideMobileUserMenu = () => document.getElementById('mobileUserMenu').classList.add('hidden');
+
+  // ── Auth Durumu Değişimi ───────────────────────────
+  onAuthStateChanged(auth, async user => {
+    if (user) {
+      currentUser = user;
+      setupUserUI(user);
+      await initDB(user.uid);
+      showApp();
+      window.render();
+    } else {
+      currentUser = null;
+      showLogin();
+    }
+  });
+
+  function setupUserUI(user) {
+    const name   = user.displayName || 'Kullanıcı';
+    const email  = user.email || '';
+    const photo  = user.photoURL;
+    const initl  = name.charAt(0).toUpperCase();
+
+    // Sidebar
+    const sName  = document.getElementById('sidebarUserName');
+    const sEmail = document.getElementById('sidebarUserEmail');
+    const sAv    = document.getElementById('sidebarUserAvatar');
+    if (sName)  sName.textContent  = name;
+    if (sEmail) sEmail.textContent = email;
+    if (sAv) {
+      if (photo) {
+        sAv.innerHTML = `<img src="${photo}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" referrerpolicy="no-referrer">`;
+      } else {
+        sAv.textContent = initl;
+      }
+    }
+
+    // Mobile avatar
+    const mAv = document.getElementById('mobileUserAvatar');
+    if (mAv) {
+      if (photo) {
+        mAv.innerHTML = `<img src="${photo}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" referrerpolicy="no-referrer">`;
+      } else {
+        mAv.textContent = initl;
+      }
+    }
+
+    // Mobile menu
+    const mumAv = document.getElementById('mumAvatar');
+    const mumN  = document.getElementById('mumName');
+    const mumE  = document.getElementById('mumEmail');
+    if (mumAv) {
+      if (photo) {
+        mumAv.innerHTML = `<img src="${photo}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" referrerpolicy="no-referrer">`;
+      } else {
+        mumAv.textContent = initl;
+      }
+    }
+    if (mumN) mumN.textContent  = name;
+    if (mumE) mumE.textContent  = email;
+  }
+
+  function showApp() {
+    document.getElementById('loginScreen').classList.add('hidden');
+    if (window.innerWidth > 860) {
+      document.getElementById('desktopLayout').classList.remove('hidden');
+      document.getElementById('app').classList.add('hidden');
+    } else {
+      document.getElementById('app').classList.remove('hidden');
+      document.getElementById('desktopLayout').classList.add('hidden');
+    }
+    // Re-check on resize
+    window.addEventListener('resize', () => {
+      if (!currentUser) return;
+      if (window.innerWidth > 860) {
+        document.getElementById('desktopLayout').classList.remove('hidden');
+        document.getElementById('app').classList.add('hidden');
+      } else {
+        document.getElementById('app').classList.remove('hidden');
+        document.getElementById('desktopLayout').classList.add('hidden');
+      }
+      window.render();
+    });
+  }
+
+  function showLogin() {
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('desktopLayout').classList.add('hidden');
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('loginLoading').classList.add('hidden');
+    document.getElementById('googleSignInBtn').classList.remove('hidden');
+    document.getElementById('loginError').classList.add('hidden');
+  }
+
+  // ── Firestore DB Wrapper ───────────────────────────
+  async function initDB(uid) {
+    // Mevcut localStorage verilerini Firestore'a aktar (tek seferlik migrasyon)
+    await migrateFromLocalStorage(uid);
+
+    // Firestore'u window.DB'ye bağla
+    window.DB = {
+      _uid: uid,
+      _db: db,
+
+      _colRef: (col) => collection(db, 'users', uid, col),
+      _docRef: (col, id) => doc(db, 'users', uid, col, id),
+
+      getCustomers: async () => {
+        const snap = await getDocs(collection(db, 'users', uid, 'customers'));
+        return snap.docs.map(d => d.data()).sort((a,b) => new Date(b.createdAt||0)-new Date(a.createdAt||0));
+      },
+      getCustomerById: async (id) => {
+        const snap = await getDocs(collection(db, 'users', uid, 'customers'));
+        return snap.docs.find(d => d.id === id)?.data() || null;
+      },
+      saveCustomer: async (c) => {
+        await setDoc(doc(db, 'users', uid, 'customers', c.id), c);
+      },
+      deleteCustomer: async (id) => {
+        await deleteDoc(doc(db, 'users', uid, 'customers', id));
+        // Randevuları da sil
+        const snap = await getDocs(collection(db, 'users', uid, 'appointments'));
+        const batch = snap.docs.filter(d => d.data().customerId === id);
+        await Promise.all(batch.map(d => deleteDoc(d.ref)));
+      },
+
+      getAppointments: async () => {
+        const snap = await getDocs(collection(db, 'users', uid, 'appointments'));
+        return snap.docs.map(d => d.data()).sort((a,b) => new Date(b.date||0)-new Date(a.date||0));
+      },
+      getAppointmentById: async (id) => {
+        const snap = await getDocs(collection(db, 'users', uid, 'appointments'));
+        return snap.docs.find(d => d.id === id)?.data() || null;
+      },
+      saveAppointment: async (a) => {
+        await setDoc(doc(db, 'users', uid, 'appointments', a.id), a);
+      },
+      deleteAppointment: async (id) => {
+        await deleteDoc(doc(db, 'users', uid, 'appointments', id));
+      },
+      getByCustomer: async (cId) => {
+        const all = await window.DB.getAppointments();
+        return all.filter(a => a.customerId === cId);
+      },
+
+      getExpenses: async () => {
+        const snap = await getDocs(collection(db, 'users', uid, 'expenses'));
+        return snap.docs.map(d => d.data()).sort((a,b) => new Date(b.date||0)-new Date(a.date||0));
+      },
+      saveExpense: async (e) => {
+        await setDoc(doc(db, 'users', uid, 'expenses', e.id), e);
+      },
+      deleteExpense: async (id) => {
+        await deleteDoc(doc(db, 'users', uid, 'expenses', id));
+      },
+    };
+  }
+
+  // ── LocalStorage → Firestore Migrasyon ────────────
+  async function migrateFromLocalStorage(uid) {
+    const migKey = 'crm_migrated_' + uid;
+    if (localStorage.getItem(migKey)) return; // Zaten yapıldı
+
+    const collections = [
+      { lsKey: 'crm2_customers',    fsCol: 'customers' },
+      { lsKey: 'crm2_appointments', fsCol: 'appointments' },
+      { lsKey: 'crm2_expenses',     fsCol: 'expenses' },
+    ];
+
+    let migrated = 0;
+    for (const { lsKey, fsCol } of collections) {
+      try {
+        const data = JSON.parse(localStorage.getItem(lsKey) || '[]');
+        for (const item of data) {
+          if (item.id) {
+            await setDoc(doc(db, 'users', uid, fsCol, item.id), item);
+            migrated++;
+          }
+        }
+      } catch(e) {}
+    }
+
+    localStorage.setItem(migKey, '1');
+    if (migrated > 0) {
+      console.log(`[CRM] ${migrated} kayıt localStorage'dan Firestore'a taşındı.`);
+    }
+  }
+</script>
+
+<script src="app.js"></script>
+</body>
+</html>
