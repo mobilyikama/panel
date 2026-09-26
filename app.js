@@ -105,7 +105,7 @@ function showLoading(mc) {
 
 async function render() {
   if (!window.DB) return; // DB henüz hazır değil
-  updateTopBar();
+    await updateTopBar();
 
   if (isDesktop()) {
     const mc = document.getElementById('mainContent');
