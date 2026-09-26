@@ -1,4 +1,4 @@
-﻿// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 //  MOBİL YIKAMA CRM v2 — Tam Özellikli
 // ═══════════════════════════════════════════════════════════
 
@@ -476,12 +476,12 @@ async function renderCustomers() {
   <div style="padding:8px 16px 0">
   ${list.length===0
     ?`<div class="empty"><div class="empty-icon">👥</div><div class="empty-title">${q?'Sonuç bulunamadı':'Henüz müşteri eklenmedi'}</div>${!q?`<button class="action-btn primary" style="margin-top:12px" onclick="openAddCustomer()">İlk Müşteriyi Ekle</button>`:''}</div>`
-    :list.map(c=>customerCard(c)).join('')}
+    :(await Promise.all(list.map(c=>customerCard(c)))).join('')}
   </div>
   <div style="height:10px"></div>`;
 }
 
-function customerCard(c) {
+async function customerCard(c) {
   const apps = await DB.getByCustomer(c.id);
   const totalPaid = apps.filter(a=>a.paymentStatus==='odendi').reduce((s,a)=>s+(+a.price||0),0);
   const hasSens = c.sensitivityNote;
@@ -1154,7 +1154,7 @@ async function renderCustomersDesktop() {
   <div class="desktop-customers-grid">
     ${list.length===0
       ?`<div class="empty" style="grid-column:1/-1"><div class="empty-icon">👥</div><div class="empty-title">${q?'Sonuç bulunamadı':'Henüz müşteri eklenmedi'}</div>${!q?`<button class="action-btn primary" style="margin-top:12px" onclick="openAddCustomer()">İlk Müşteriyi Ekle</button>`:''}</div>`
-      :list.map(c=>customerCard(c)).join('')}
+      :(await Promise.all(list.map(c=>customerCard(c)))).join('')}
   </div>
   <div style="height:10px"></div>`;
 }
