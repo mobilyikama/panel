@@ -1,4 +1,4 @@
-// ═══════════════════════════════════════════════════════════
+﻿// ═══════════════════════════════════════════════════════════
 //  MOBİL YIKAMA CRM v2 — Tam Özellikli
 // ═══════════════════════════════════════════════════════════
 
@@ -234,7 +234,7 @@ async function updateTopBar() {
 // ═══════════════════════════════════════════════════════════
 //  ANA SAYFA
 // ═══════════════════════════════════════════════════════════
-async function renderHome\() {
+async function renderHome() {
   const customers    = await await DB.getCustomers();
   const appointments = await DB.getAppointments();
   const expenses     = await DB.getExpenses();
@@ -342,7 +342,7 @@ function todayCard(a) {
 // ═══════════════════════════════════════════════════════════
 //  RANDEVULAR
 // ═══════════════════════════════════════════════════════════
-async function renderAppointments\() {
+async function renderAppointments() {
   const all = await (await DB.getAppointments()).sort((a,b)=>new Date(b.date)-new Date(a.date));
   const now = new Date();
   const pendingAmt = all.filter(a=>a.paymentStatus!=='odendi').reduce((s,a)=>s+(+a.price||0),0);
@@ -405,7 +405,7 @@ function apptCard(a, inDetail) {
 // ═══════════════════════════════════════════════════════════
 //  RANDEVU DETAY
 // ═══════════════════════════════════════════════════════════
-async function renderApptDetail\(id) {
+async function renderApptDetail(id) {
   const a = await DB.getAppointmentById(id);
   if (!a) return `<div class="empty"><div class="empty-title">Bulunamadı</div></div>`;
   const svc  = getSvc(a.serviceType);
@@ -454,7 +454,7 @@ async function renderApptDetail\(id) {
 // ═══════════════════════════════════════════════════════════
 //  MÜŞTERİLER
 // ═══════════════════════════════════════════════════════════
-async function renderCustomers\() {
+async function renderCustomers() {
   const all = await DB.getCustomers();
 
   const q   = searchQ.toLowerCase();
@@ -510,7 +510,7 @@ function customerCard(c) {
 // ═══════════════════════════════════════════════════════════
 //  MÜŞTERİ DETAY
 // ═══════════════════════════════════════════════════════════
-async function renderCustomerDetail\(id) {
+async function renderCustomerDetail(id) {
   const c = await DB.getCustomerById(id);
   if (!c) return `<div class="empty"><div class="empty-title">Müşteri bulunamadı</div></div>`;
   const apps = await DB.getByCustomer(id);
@@ -564,7 +564,7 @@ async function renderCustomerDetail\(id) {
 // ═══════════════════════════════════════════════════════════
 //  FİNANS
 // ═══════════════════════════════════════════════════════════
-async function renderFinance\() {
+async function renderFinance() {
   const appointments = await DB.getAppointments();
   const expenses     = await DB.getExpenses();
   const now = new Date();
@@ -1001,7 +1001,7 @@ function showToast(msg, type='info') {
 //  DESKTOP RENDER FONKSIYONLARI
 // ═══════════════════════════════════════════════════════════
 
-async function renderHomeDesktop\() {
+async function renderHomeDesktop() {
   const customers    = await await DB.getCustomers();
   const appointments = await DB.getAppointments();
   const expenses     = await DB.getExpenses();
@@ -1110,7 +1110,7 @@ async function renderHomeDesktop\() {
   <div style="height:10px"></div>`;
 }
 
-async function renderAppointmentsDesktop\() {
+async function renderAppointmentsDesktop() {
   const all = await (await DB.getAppointments()).sort((a,b)=>new Date(b.date)-new Date(a.date));
   const pendingAmt = all.filter(a=>a.paymentStatus!=='odendi').reduce((s,a)=>s+(+a.price||0),0);
 
@@ -1137,7 +1137,7 @@ async function renderAppointmentsDesktop\() {
   <div style="height:10px"></div>`;
 }
 
-async function renderCustomersDesktop\() {
+async function renderCustomersDesktop() {
   const all = await await DB.getCustomers();
   const q   = searchQ.toLowerCase();
   const list = q ? all.filter(c=>(c.name||'').toLowerCase().includes(q)||(c.phone||'').includes(q)||(c.address||'').toLowerCase().includes(q)) : all;
@@ -1159,7 +1159,7 @@ async function renderCustomersDesktop\() {
   <div style="height:10px"></div>`;
 }
 
-async function renderFinanceDesktop\() {
+async function renderFinanceDesktop() {
   const appointments = await DB.getAppointments();
   const expenses     = await DB.getExpenses();
 
@@ -1232,7 +1232,7 @@ async function renderFinanceDesktop\() {
   <div style="height:20px"></div>`;
 }
 
-async function renderCustomerDetailDesktop\(id) {
+async function renderCustomerDetailDesktop(id) {
   const c = await DB.getCustomerById(id);
   if (!c) return `<div class="empty"><div class="empty-title">Müşteri bulunamadı</div></div>`;
   const apps = await DB.getByCustomer(id);
@@ -1288,7 +1288,7 @@ async function renderCustomerDetailDesktop\(id) {
   <div style="height:20px"></div>`;
 }
 
-async function renderApptDetailDesktop\(id) {
+async function renderApptDetailDesktop(id) {
   const a = await DB.getAppointmentById(id);
   if (!a) return `<div class="empty"><div class="empty-title">Bulunamadı</div></div>`;
   const svc  = getSvc(a.serviceType);
@@ -1351,6 +1351,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Firebase auth state değiştiğinde render() çağrılacak (index.html)
 });
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
 
 
 
