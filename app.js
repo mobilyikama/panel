@@ -1,4 +1,4 @@
-// ═══════════════════════════════════════════════════════════
+﻿// ═══════════════════════════════════════════════════════════
 //  MOBİL YIKAMA CRM v2 — Tam Özellikli
 // ═══════════════════════════════════════════════════════════
 
@@ -235,7 +235,7 @@ async function updateTopBar() {
 //  ANA SAYFA
 // ═══════════════════════════════════════════════════════════
 async function renderHome() {
-  const customers    = await await DB.getCustomers();
+  const customers    = await DB.getCustomers();
   const appointments = await DB.getAppointments();
   const expenses     = await DB.getExpenses();
   const now = new Date();
@@ -641,7 +641,7 @@ async function renderFinance() {
 function openAddAppointment(customerId, customerName, customerPhone, customerAddress) {
   const now = new Date();
   const dateStr = now.toISOString().slice(0,16);
-  const customers = await await DB.getCustomers();
+  const customers = await DB.getCustomers();
   const hasCustomer = !!customerId;
 
   openModal('📅 Yeni Randevu', `
@@ -827,7 +827,7 @@ async function saveCustomer(editId) {
 //  MODAL: GELİR / GİDER EKLE
 // ═══════════════════════════════════════════════════════════
 function openAddIncome() {
-  const customers = await await DB.getCustomers();
+  const customers = await DB.getCustomers();
   const now = new Date().toISOString().slice(0,10);
   openModal('💰 Gelir Ekle', `
     <div class="form-group">
@@ -941,7 +941,7 @@ async function confirmDeleteAppt(id, goBack) {
     <p style="color:var(--text-sec);margin-bottom:24px;line-height:1.6">"<strong>${getSvc(a.serviceType).label}</strong>" randevusunu silmek istiyor musunuz? Bu işlem geri alınamaz.</p>
     <div style="display:flex;gap:10px">
       <button class="save-btn" style="background:var(--surface2);box-shadow:none;flex:1" onclick="closeModal()">İptal</button>
-      <button class="save-btn danger" style="flex:1" onclick="await DB.deleteAppointment('${id}');closeModal();showToast('Silindi','error');${goBack?`navigate('appointments')`:``}render()">Sil</button>
+      <button class="save-btn danger" style="flex:1" onclick="DB.deleteAppointment('${id}');closeModal();showToast('Silindi','error');${goBack?`navigate('appointments')`:``}render()">Sil</button>
     </div>
   `);
 }
@@ -951,7 +951,7 @@ async function confirmDeleteCustomer(id, name) {
     <p style="color:var(--text-sec);margin-bottom:24px;line-height:1.6">"<strong>${name}</strong>" müşterisini ve tüm işlem geçmişini silmek istiyor musunuz?</p>
     <div style="display:flex;gap:10px">
       <button class="save-btn" style="background:var(--surface2);box-shadow:none;flex:1" onclick="closeModal()">İptal</button>
-      <button class="save-btn danger" style="flex:1" onclick="await DB.deleteCustomer('${id}');closeModal();showToast('Müşteri silindi','error');render()">Sil</button>
+      <button class="save-btn danger" style="flex:1" onclick="DB.deleteCustomer('${id}');closeModal();showToast('Müşteri silindi','error');render()">Sil</button>
     </div>
   `);
 }
@@ -961,7 +961,7 @@ async function confirmDeleteExpense(id) {
     <p style="color:var(--text-sec);margin-bottom:24px">Bu gider kaydını silmek istiyor musunuz?</p>
     <div style="display:flex;gap:10px">
       <button class="save-btn" style="background:var(--surface2);box-shadow:none;flex:1" onclick="closeModal()">İptal</button>
-      <button class="save-btn danger" style="flex:1" onclick="await DB.deleteExpense('${id}');closeModal();showToast('Silindi','error');render()">Sil</button>
+      <button class="save-btn danger" style="flex:1" onclick="DB.deleteExpense('${id}');closeModal();showToast('Silindi','error');render()">Sil</button>
     </div>
   `);
 }
@@ -1002,7 +1002,7 @@ function showToast(msg, type='info') {
 // ═══════════════════════════════════════════════════════════
 
 async function renderHomeDesktop() {
-  const customers    = await await DB.getCustomers();
+  const customers    = await DB.getCustomers();
   const appointments = await DB.getAppointments();
   const expenses     = await DB.getExpenses();
   const now = new Date();
@@ -1138,7 +1138,7 @@ async function renderAppointmentsDesktop() {
 }
 
 async function renderCustomersDesktop() {
-  const all = await await DB.getCustomers();
+  const all = await DB.getCustomers();
   const q   = searchQ.toLowerCase();
   const list = q ? all.filter(c=>(c.name||'').toLowerCase().includes(q)||(c.phone||'').includes(q)||(c.address||'').toLowerCase().includes(q)) : all;
 
@@ -1351,6 +1351,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Firebase auth state değiştiğinde render() çağrılacak (index.html)
 });
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
 
 
 
