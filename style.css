@@ -447,6 +447,51 @@
   --safe-t: env(safe-area-inset-top, 0px);
 }
 
+[data-theme="light"] {
+  --bg: #F3F4F6;
+  --bg2: #E5E7EB;
+  --surface: #FFFFFF;
+  --surface2: #F9FAFB;
+  --surface3: #F3F4F6;
+  --surface4: #E5E7EB;
+  --glass: rgba(255,255,255,0.8);
+  --glass2: rgba(249,250,251,0.6);
+  --primary: #2563EB;
+  --primary-dark: #1D4ED8;
+  --primary-light: #60A5FA;
+  --primary-glow: rgba(37,99,235,0.15);
+  --primary-subtle: rgba(37,99,235,0.08);
+  --accent: #0284C7;
+  --accent-glow: rgba(2,132,199,0.15);
+  --text: #111827;
+  --text-sec: #4B5563;
+  --text-muted: #6B7280;
+  --text-dim: #9CA3AF;
+  --border: rgba(37,99,235,0.1);
+  --border2: rgba(37,99,235,0.2);
+  --border3: rgba(37,99,235,0.3);
+}
+
+.theme-toggle-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  width: 100%;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+.theme-toggle-btn:hover { background: var(--surface3); }
+
+
 html, body {
   height: 100%;
   background: var(--bg);
