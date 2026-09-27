@@ -50,9 +50,30 @@ const escape = s => String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
 let page = 'home';
 let apptFilter = 'hepsi';
 let finTab = 'income';
+let finMonth = 'all'; // 'all' veya 'YYYY-MM'
 let searchQ = '';
 let detailCustomerId = null;
 let detailApptId = null;
+
+// ─── BELLEK ÖNBELLEKL (in-memory cache) ────────────────────
+// Firestore çağrılarını tekrarlamamak için kısa süreli önbellek
+const _cache = {};
+const CACHE_TTL = 6000; // 6 saniye
+
+async function cachedGet(key, fetchFn) {
+  const now = Date.now();
+  if (_cache[key] && (now - _cache[key].ts) < CACHE_TTL) {
+    return _cache[key].data;
+  }
+  const data = await fetchFn();
+  _cache[key] = { data, ts: now };
+  return data;
+}
+
+function invalidateCache(...keys) {
+  if (keys.length === 0) { Object.keys(_cache).forEach(k => delete _cache[k]); }
+  else keys.forEach(k => delete _cache[k]);
+}
 
 // ─── DESKTOP / MOBILE DETECT ──────────────────────────────
 const isDesktop = () => window.innerWidth > 860;
@@ -104,7 +125,7 @@ function showLoading(mc) {
 }
 
 async function render() {
-  if (!window.DB) return; // DB henüz hazır değil
+  if (!window.DB) return;
   await updateTopBar();
 
   if (isDesktop()) {
@@ -135,9 +156,9 @@ async function render() {
     if (mc) mc.innerHTML = html;
   }
 
-  // Update pending badge
+  // Bekleyen badge — önbellekteki veriyi kullan (ekstra Firestore çağrısı yapmaz)
   try {
-    const allAppts = await DB.getAppointments();
+    const allAppts = await cachedGet('appointments', () => DB.getAppointments());
     const pending = allAppts.filter(a=>a.paymentStatus!=='odendi').length;
     const badge = document.getElementById('snav-badge-appt');
     if (badge) {
@@ -235,9 +256,9 @@ async function updateTopBar() {
 //  ANA SAYFA
 // ═══════════════════════════════════════════════════════════
 async function renderHome() {
-  const customers    = await DB.getCustomers();
-  const appointments = await DB.getAppointments();
-  const expenses     = await DB.getExpenses();
+  const customers    = await cachedGet('customers',    () => DB.getCustomers());
+  const appointments = await cachedGet('appointments', () => DB.getAppointments());
+  const expenses     = await cachedGet('expenses',     () => DB.getExpenses());
   const now = new Date();
 
   const monthApps  = appointments.filter(a=>{const d=new Date(a.date);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
@@ -343,7 +364,7 @@ function todayCard(a) {
 //  RANDEVULAR
 // ═══════════════════════════════════════════════════════════
 async function renderAppointments() {
-  const all = await (await DB.getAppointments()).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const all = (await cachedGet('appointments', () => DB.getAppointments())).sort((a,b)=>new Date(b.date)-new Date(a.date));
   const now = new Date();
   const pendingAmt = all.filter(a=>a.paymentStatus!=='odendi').reduce((s,a)=>s+(+a.price||0),0);
 
@@ -443,7 +464,7 @@ async function renderApptDetail(id) {
     </div>
 
     <div style="display:flex;gap:10px">
-      ${a.customerPhone?`<a href="https://wa.me/90${a.customerPhone.replace(/\D/g,'').slice(-10)}" class="action-btn success" style="flex:1;text-decoration:none"><img src="wp.avif" class="wa-logo" alt="WA"> WhatsApp</a>`:''}
+      ${a.customerPhone?`<a href="https://wa.me/90${a.customerPhone.replace(/\D/g,'').slice(-10)}" class="action-btn success" style="flex:1;text-decoration:none"><img src="https://img.icons8.com/?size=100&id=16713&format=png&color=000000" class="wa-logo" alt="WA"> WhatsApp</a>`:''}
       ${a.customerPhone?`<a href="tel:${a.customerPhone}" class="action-btn primary" style="flex:1;text-decoration:none">📞 Ara</a>`:''}
     </div>
     <button class="save-btn danger" onclick="confirmDeleteAppt('${a.id}',true)">🗑️ Bu İşlemi Sil</button>
@@ -455,7 +476,9 @@ async function renderApptDetail(id) {
 //  MÜŞTERİLER
 // ═══════════════════════════════════════════════════════════
 async function renderCustomers() {
-  const all = await DB.getCustomers();
+  const all = await cachedGet('customers', () => DB.getCustomers());
+  // Tüm randevuları tek seferde çek (customerCard'da N+1 sorguyu önler)
+  const allAppts = await cachedGet('appointments', () => DB.getAppointments());
 
   const q   = searchQ.toLowerCase();
   const list = q ? all.filter(c=>(c.name||'').toLowerCase().includes(q)||(c.phone||'').includes(q)||(c.address||'').toLowerCase().includes(q)) : all;
@@ -476,13 +499,14 @@ async function renderCustomers() {
   <div style="padding:8px 16px 0">
   ${list.length===0
     ?`<div class="empty"><div class="empty-icon">👥</div><div class="empty-title">${q?'Sonuç bulunamadı':'Henüz müşteri eklenmedi'}</div>${!q?`<button class="action-btn primary" style="margin-top:12px" onclick="openAddCustomer()">İlk Müşteriyi Ekle</button>`:''}</div>`
-    :(await Promise.all(list.map(c=>customerCard(c)))).join('')}
+    :list.map(c=>customerCardSync(c, allAppts)).join('')}
   </div>
   <div style="height:10px"></div>`;
 }
 
-async function customerCard(c) {
-  const apps = await DB.getByCustomer(c.id);
+// Senkron (önceden yüklenmiş randevuları kullan) — N+1 sorgu yok!
+function customerCardSync(c, allAppts) {
+  const apps = allAppts.filter(a => a.customerId === c.id);
   const totalPaid = apps.filter(a=>a.paymentStatus==='odendi').reduce((s,a)=>s+(+a.price||0),0);
   const hasSens = c.sensitivityNote;
 
@@ -500,11 +524,17 @@ async function customerCard(c) {
     </div>
     <div class="customer-card-actions">
       <button class="cust-btn detail" onclick="navigate('customer-detail',{customerId:'${c.id}'})">📋 Detay</button>
-      ${c.phone?`<a href="https://wa.me/90${(c.phone||'').replace(/\D/g,'').slice(-10)}" class="cust-btn wa"><img src="wp.avif" class="wa-logo" alt="WA"> WA</a>`:''}
+      ${c.phone?`<a href="https://wa.me/90${(c.phone||'').replace(/\D/g,'').slice(-10)}" class="cust-btn wa"><img src="https://img.icons8.com/?size=100&id=16713&format=png&color=000000" class="wa-logo" alt="WA"> WA</a>`:''}
       ${c.phone?`<a href="tel:${c.phone}" class="cust-btn call">📞 Ara</a>`:''}
       <button class="cust-btn del" onclick="confirmDeleteCustomer('${c.id}','${escape(c.name)}')">🗑️</button>
     </div>
   </div>`;
+}
+
+// Eski async versiyon (tekil kullanım için)
+async function customerCard(c) {
+  const allAppts = await cachedGet('appointments', () => DB.getAppointments());
+  return customerCardSync(c, allAppts);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -513,7 +543,8 @@ async function customerCard(c) {
 async function renderCustomerDetail(id) {
   const c = await DB.getCustomerById(id);
   if (!c) return `<div class="empty"><div class="empty-title">Müşteri bulunamadı</div></div>`;
-  const apps = await DB.getByCustomer(id);
+  const allAppts = await cachedGet('appointments', () => DB.getAppointments());
+  const apps = allAppts.filter(a => a.customerId === id);
   const totalPaid = apps.filter(a=>a.paymentStatus==='odendi').reduce((s,a)=>s+(+a.price||0),0);
   const pending   = apps.filter(a=>a.paymentStatus!=='odendi').reduce((s,a)=>s+(+a.price||0),0);
 
@@ -536,7 +567,7 @@ async function renderCustomerDetail(id) {
     <!-- Hızlı Aksiyonlar -->
     <div style="display:flex;gap:8px">
       <button class="action-btn primary" style="flex:2" onclick="openAddAppointment('${c.id}','${escape(c.name)}','${escape(c.phone||'')}','${escape(c.address||'')}')">📅 Yeni İşlem Ekle</button>
-      ${c.phone?`<a href="https://wa.me/90${(c.phone||'').replace(/\D/g,'').slice(-10)}" class="action-btn success" style="flex:1;text-decoration:none;font-size:12px"><img src="wp.avif" class="wa-logo" alt="WA"> WA</a>`:''}
+      ${c.phone?`<a href="https://wa.me/90${(c.phone||'').replace(/\D/g,'').slice(-10)}" class="action-btn success" style="flex:1;text-decoration:none;font-size:12px"><img src="https://img.icons8.com/?size=100&id=16713&format=png&color=000000" class="wa-logo" alt="WA"> WA</a>`:''}
       ${c.phone?`<a href="tel:${c.phone}" class="action-btn primary" style="flex:1;text-decoration:none;background:var(--surface2);box-shadow:none;font-size:12px">📞 Ara</a>`:''}
     </div>
 
@@ -564,17 +595,40 @@ async function renderCustomerDetail(id) {
 // ═══════════════════════════════════════════════════════════
 //  FİNANS
 // ═══════════════════════════════════════════════════════════
+
+// Ay filtresi için yardımcı
+function getMonthOptions(items) {
+  const months = new Set();
+  items.forEach(i => {
+    const d = new Date(i.date||i.createdAt);
+    if (!isNaN(d)) months.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  });
+  return Array.from(months).sort().reverse();
+}
+
 async function renderFinance() {
-  const appointments = await DB.getAppointments();
-  const expenses     = await DB.getExpenses();
+  const appointments = await cachedGet('appointments', () => DB.getAppointments());
+  const expenses     = await cachedGet('expenses',     () => DB.getExpenses());
   const now = new Date();
 
-  const incomes = appointments.filter(a=>a.paymentStatus==='odendi')
+  const allIncomes = appointments.filter(a=>a.paymentStatus==='odendi')
     .map(a=>({id:a.id,name:a.customerName||'Müşteri',desc:a.serviceLabel||'İşlem',amount:+a.price||0,date:a.date,type:'income',icon:getSvc(a.serviceType).icon}))
     .sort((a,b)=>new Date(b.date)-new Date(a.date));
 
-  const expList = expenses.map(e=>({...e,type:'expense',icon:getExpCat(e.category).icon,desc:getExpCat(e.category).label}))
+  const allExpList = expenses.map(e=>({...e,type:'expense',icon:getExpCat(e.category).icon,desc:getExpCat(e.category).label}))
     .sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  // Ay filtresi
+  const filterByMonth = (items) => {
+    if (finMonth === 'all') return items;
+    return items.filter(i => {
+      const d = new Date(i.date);
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` === finMonth;
+    });
+  };
+
+  const incomes = filterByMonth(allIncomes);
+  const expList = filterByMonth(allExpList);
 
   const totalIncome  = incomes.reduce((s,i)=>s+i.amount,0);
   const totalExpense = expList.reduce((s,e)=>s+e.amount,0);
@@ -582,12 +636,30 @@ async function renderFinance() {
 
   const list = finTab==='income' ? incomes : expList;
 
+  // Ay seçenekleri
+  const allDates = [...allIncomes, ...allExpList];
+  const monthOpts = getMonthOptions(allDates);
+  const monthLabel = (m) => {
+    if (m === 'all') return 'Tüm Zamanlar';
+    const [y,mo] = m.split('-');
+    return new Date(+y, +mo-1).toLocaleDateString('tr-TR',{month:'long',year:'numeric'});
+  };
+
   return `
   <div class="page-header">
     <div><div class="page-h-title">💳 Kasa & Finans</div><div class="page-h-sub">Net: <strong class="${net>=0?'text-success':'text-error'}">${fmt(net)}</strong></div></div>
-    <button class="top-bar-btn" onclick="${finTab==='income'?'openAddIncome()':'openAddExpense()'}">
+    <button class="top-bar-btn" onclick="${finTab==='income'?'openAddIncome()':'openAddExpense()}">
       ${finTab==='income'?'＋ Gelir':'＋ Gider'}
     </button>
+  </div>
+
+  <!-- Ay Filtresi -->
+  <div style="padding:10px 16px 0;display:flex;align-items:center;gap:8px">
+    <span style="font-size:11px;color:var(--text-muted);font-weight:600">📅 Dönem:</span>
+    <select class="form-input" style="flex:1;padding:7px 10px;font-size:12px;height:auto" onchange="finMonth=this.value;render()">
+      <option value="all" ${finMonth==='all'?'selected':''}>Tüm Zamanlar</option>
+      ${monthOpts.map(m=>`<option value="${m}" ${finMonth===m?'selected':''}>${monthLabel(m)}</option>`).join('')}
+    </select>
   </div>
 
   <!-- Özet -->
@@ -595,6 +667,44 @@ async function renderFinance() {
     <div style="background:var(--success-bg);border:1px solid rgba(16,185,129,0.2);border-radius:var(--r-md);padding:12px;text-align:center">
       <div style="font-size:10px;color:var(--success);font-weight:700;margin-bottom:4px">TOPLAM GELİR</div>
       <div style="font-size:14px;font-weight:900;color:var(--success)">${fmt(totalIncome)}</div>
+    </div>
+    <div style="background:var(--error-bg);border:1px solid rgba(239,68,68,0.2);border-radius:var(--r-md);padding:12px;text-align:center">
+      <div style="font-size:10px;color:var(--error);font-weight:700;margin-bottom:4px">TOPLAM GİDER</div>
+      <div style="font-size:14px;font-weight:900;color:var(--error)">${fmt(totalExpense)}</div>
+    </div>
+    <div style="background:${net>=0?'var(--success-bg)':'var(--error-bg)'};border:1px solid rgba(${net>=0?'16,185,129':'239,68,68'},0.2);border-radius:var(--r-md);padding:12px;text-align:center">
+      <div style="font-size:10px;color:${net>=0?'var(--success)':'var(--error)'};font-weight:700;margin-bottom:4px">NET KAZANÇ</div>
+      <div style="font-size:14px;font-weight:900;color:${net>=0?'var(--success)':'var(--error)'}">${fmt(net)}</div>
+    </div>
+  </div>
+
+  <div class="fin-tabs">
+    <button class="fin-tab income ${finTab==='income'?'active':''}" onclick="finTab='income';updateTopBar();render()">💰 Gelirler (${incomes.length})</button>
+    <button class="fin-tab expense ${finTab==='expense'?'active':''}" onclick="finTab='expense';updateTopBar();render()">📉 Giderler (${expList.length})</button>
+  </div>
+
+  <div style="background:var(--surface);border-radius:var(--r-lg);margin:0 16px;border:1px solid var(--border);overflow:hidden">
+    ${list.length===0
+      ?`<div class="empty"><div class="empty-icon">${finTab==='income'?'💰':'📉'}</div><div class="empty-title">${finTab==='income'?'Henüz gelir yok':'Henüz gider kaydı yok'}</div></div>`
+      :list.map(item=>`
+      <div class="fin-item" onclick="${finTab==='expense'?`confirmDeleteExpense('${item.id}')`:''}" style="${finTab==='income'?'cursor:default':''}">
+        <div class="fin-item-icon" style="background:${finTab==='income'?'var(--success-bg)':'var(--error-bg)'}">${item.icon}</div>
+        <div class="fin-item-body">
+          <div class="fin-item-name">${item.name}</div>
+          <div class="fin-item-sub">
+            <span>${fmtD(item.date)}</span>
+            <span>·</span>
+            <span>${item.desc}</span>
+            ${finTab==='income'&&item.id?`<span class="badge badge-paid" style="font-size:10px;padding:2px 8px">Ödendi</span>`:''}
+          </div>
+        </div>
+        <div class="fin-item-amount ${finTab==='income'?'income':'expense'}">
+          ${finTab==='income'?'+':'-'}${fmt(item.amount)}
+        </div>
+        ${finTab==='expense'?`<button onclick="event.stopPropagation();confirmDeleteExpense('${item.id}')" style="background:none;border:none;color:var(--error);font-size:16px;cursor:pointer;padding:4px">🗑️</button>`:''}
+      </div>`).join('')}
+  </div>
+  <div style="height:20px"></div>`;font-size:14px;font-weight:900;color:var(--success)">${fmt(totalIncome)}</div>
     </div>
     <div style="background:var(--error-bg);border:1px solid rgba(239,68,68,0.2);border-radius:var(--r-md);padding:12px;text-align:center">
       <div style="font-size:10px;color:var(--error);font-weight:700;margin-bottom:4px">TOPLAM GİDER</div>
@@ -773,6 +883,7 @@ async function saveAppointment() {
     date: dateV ? new Date(dateV).toISOString() : new Date().toISOString(),
     createdAt: new Date().toISOString(),
   });
+  invalidateCache('appointments'); // Önbelleği temizle
   closeModal(); showToast('Randevu kaydedildi ✓','success'); render();
 }
 
@@ -811,15 +922,21 @@ function openEditCustomer(id) { openAddCustomer(id); }
 async function saveCustomer(editId) {
   const name = document.getElementById('c_name').value.trim();
   if (!name) { showToast('Ad soyad zorunludur!','error'); return; }
+  let createdAt = new Date().toISOString();
+  if (editId) {
+    const cached = await cachedGet('customers', () => DB.getCustomers());
+    createdAt = cached.find(c=>c.id===editId)?.createdAt || createdAt;
+  }
   await DB.saveCustomer({
     id: editId||uid(), name,
     phone: document.getElementById('c_phone').value.trim(),
     address: document.getElementById('c_addr').value.trim(),
     sensitivityNote: document.getElementById('c_sens').value.trim(),
     notes: document.getElementById('c_notes').value.trim(),
-    createdAt: editId ? (DB.getCustomerById(editId)?.createdAt||new Date().toISOString()) : new Date().toISOString(),
+    createdAt,
     updatedAt: new Date().toISOString(),
   });
+  invalidateCache('customers'); // Önbelleği temizle
   closeModal(); showToast(editId?'Müşteri güncellendi ✓':'Müşteri eklendi ✓','success'); render();
 }
 
@@ -860,7 +977,8 @@ async function saveIncome() {
   const amt = parseFloat(document.getElementById('i_amt').value)||0;
   if (!amt) { showToast('Tutar giriniz!','error'); return; }
   const custId = document.getElementById('i_cust').value;
-  const cust   = custId ? DB.getCustomerById(custId) : null;
+  const customers = await cachedGet('customers', () => DB.getCustomers());
+  const cust = custId ? customers.find(c => c.id === custId) : null;
   // Manuel geliri randevu gibi kaydet
   await DB.saveAppointment({
     id: uid(),
@@ -878,6 +996,7 @@ async function saveIncome() {
     date: new Date(document.getElementById('i_date').value||new Date()).toISOString(),
     createdAt: new Date().toISOString(),
   });
+  invalidateCache('appointments'); // Önbelleği temizle
   closeModal(); showToast('Gelir kaydedildi ✓','success'); render();
 }
 
@@ -921,6 +1040,7 @@ async function saveExpense() {
     date: new Date(document.getElementById('e_date').value||new Date()).toISOString(),
     createdAt: new Date().toISOString(),
   });
+  invalidateCache('expenses'); // Önbelleği temizle
   closeModal(); showToast('Gider kaydedildi','info'); render();
 }
 
@@ -928,9 +1048,11 @@ async function saveExpense() {
 //  HELPER ACTIONS
 // ═══════════════════════════════════════════════════════════
 async function markPaid(id) {
-  const a = await DB.getAppointmentById(id);
+  const allAppts = await cachedGet('appointments', () => DB.getAppointments());
+  const a = allAppts.find(x => x.id === id) || await DB.getAppointmentById(id);
   if (!a) return;
   await DB.saveAppointment({...a, paymentStatus:'odendi'});
+  invalidateCache('appointments'); // Önbelleği temizle
   showToast('Tahsilat tamamlandı ✓','success');
   render();
 }
@@ -1002,9 +1124,9 @@ function showToast(msg, type='info') {
 // ═══════════════════════════════════════════════════════════
 
 async function renderHomeDesktop() {
-  const customers    = await DB.getCustomers();
-  const appointments = await DB.getAppointments();
-  const expenses     = await DB.getExpenses();
+  const customers    = await cachedGet('customers',    () => DB.getCustomers());
+  const appointments = await cachedGet('appointments', () => DB.getAppointments());
+  const expenses     = await cachedGet('expenses',     () => DB.getExpenses());
   const now = new Date();
 
   const monthApps  = appointments.filter(a=>{const d=new Date(a.date);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
@@ -1111,7 +1233,7 @@ async function renderHomeDesktop() {
 }
 
 async function renderAppointmentsDesktop() {
-  const all = await (await DB.getAppointments()).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const all = (await cachedGet('appointments', () => DB.getAppointments())).sort((a,b)=>new Date(b.date)-new Date(a.date));
   const pendingAmt = all.filter(a=>a.paymentStatus!=='odendi').reduce((s,a)=>s+(+a.price||0),0);
 
   const filtered = all.filter(a=>{
@@ -1138,7 +1260,8 @@ async function renderAppointmentsDesktop() {
 }
 
 async function renderCustomersDesktop() {
-  const all = await DB.getCustomers();
+  const all = await cachedGet('customers', () => DB.getCustomers());
+  const allAppts = await cachedGet('appointments', () => DB.getAppointments());
   const q   = searchQ.toLowerCase();
   const list = q ? all.filter(c=>(c.name||'').toLowerCase().includes(q)||(c.phone||'').includes(q)||(c.address||'').toLowerCase().includes(q)) : all;
 
@@ -1154,21 +1277,33 @@ async function renderCustomersDesktop() {
   <div class="desktop-customers-grid">
     ${list.length===0
       ?`<div class="empty" style="grid-column:1/-1"><div class="empty-icon">👥</div><div class="empty-title">${q?'Sonuç bulunamadı':'Henüz müşteri eklenmedi'}</div>${!q?`<button class="action-btn primary" style="margin-top:12px" onclick="openAddCustomer()">İlk Müşteriyi Ekle</button>`:''}</div>`
-      :(await Promise.all(list.map(c=>customerCard(c)))).join('')}
+      :list.map(c=>customerCardSync(c, allAppts)).join('')}
   </div>
   <div style="height:10px"></div>`;
 }
 
 async function renderFinanceDesktop() {
-  const appointments = await DB.getAppointments();
-  const expenses     = await DB.getExpenses();
+  const appointments = await cachedGet('appointments', () => DB.getAppointments());
+  const expenses     = await cachedGet('expenses',     () => DB.getExpenses());
 
-  const incomes = appointments.filter(a=>a.paymentStatus==='odendi')
+  const allIncomes = appointments.filter(a=>a.paymentStatus==='odendi')
     .map(a=>({id:a.id,name:a.customerName||'Müşteri',desc:a.serviceLabel||'İşlem',amount:+a.price||0,date:a.date,type:'income',icon:getSvc(a.serviceType).icon}))
     .sort((a,b)=>new Date(b.date)-new Date(a.date));
 
-  const expList = expenses.map(e=>({...e,type:'expense',icon:getExpCat(e.category).icon,desc:getExpCat(e.category).label}))
+  const allExpList = expenses.map(e=>({...e,type:'expense',icon:getExpCat(e.category).icon,desc:getExpCat(e.category).label}))
     .sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  // Ay filtresi (mobille aynı)
+  const filterByMonth = (items) => {
+    if (finMonth === 'all') return items;
+    return items.filter(i => {
+      const d = new Date(i.date);
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` === finMonth;
+    });
+  };
+
+  const incomes = filterByMonth(allIncomes);
+  const expList = filterByMonth(allExpList);
 
   const totalIncome  = incomes.reduce((s,i)=>s+i.amount,0);
   const totalExpense = expList.reduce((s,e)=>s+e.amount,0);
@@ -1176,10 +1311,26 @@ async function renderFinanceDesktop() {
 
   const list = finTab==='income' ? incomes : expList;
 
+  const allDates = [...allIncomes, ...allExpList];
+  const monthOpts = getMonthOptions(allDates);
+  const monthLabel = (m) => {
+    if (m === 'all') return 'Tüm Zamanlar';
+    const [y,mo] = m.split('-');
+    return new Date(+y, +mo-1).toLocaleDateString('tr-TR',{month:'long',year:'numeric'});
+  };
+
   return `
   <div class="desktop-finance-layout">
     <!-- Sol: Özet -->
     <div class="fin-summary-stack">
+      <!-- Ay Filtresi -->
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-md);padding:14px">
+        <div style="font-size:11px;color:var(--text-muted);font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.6px">📅 Dönem Filtresi</div>
+        <select class="form-input" style="padding:8px 10px;font-size:13px;height:auto;width:100%" onchange="finMonth=this.value;render()">
+          <option value="all" ${finMonth==='all'?'selected':''}>Tüm Zamanlar</option>
+          ${monthOpts.map(m=>`<option value="${m}" ${finMonth===m?'selected':''}>${monthLabel(m)}</option>`).join('')}
+        </select>
+      </div>
       <div class="fin-summary-item ${finTab==='income'?'active-income':''}" onclick="finTab='income';updateTopBar();render()">
         <div class="fsi-label">💰 Toplam Gelir</div>
         <div class="fsi-value" style="color:var(--success-light)">${fmt(totalIncome)}</div>
@@ -1193,7 +1344,7 @@ async function renderFinanceDesktop() {
       <div class="fin-summary-item" style="background:${net>=0?'var(--success-bg)':'var(--error-bg)'};border-color:${net>=0?'var(--success-border)':'var(--error-border)'}">
         <div class="fsi-label">🏆 Net Kazanç</div>
         <div class="fsi-value" style="color:${net>=0?'var(--success-light)':'var(--error)'}">${fmt(net)}</div>
-        <div class="fsi-count" style="color:${net>=0?'var(--success)':'var(--error)'}">Tüm zamanlar</div>
+        <div class="fsi-count" style="color:${net>=0?'var(--success)':'var(--error)'}">Seçili dönem</div>
       </div>
     </div>
 
@@ -1235,7 +1386,8 @@ async function renderFinanceDesktop() {
 async function renderCustomerDetailDesktop(id) {
   const c = await DB.getCustomerById(id);
   if (!c) return `<div class="empty"><div class="empty-title">Müşteri bulunamadı</div></div>`;
-  const apps = await DB.getByCustomer(id);
+  const allAppts = await cachedGet('appointments', () => DB.getAppointments());
+  const apps = allAppts.filter(a => a.customerId === id);
   const totalPaid = apps.filter(a=>a.paymentStatus==='odendi').reduce((s,a)=>s+(+a.price||0),0);
   const pending   = apps.filter(a=>a.paymentStatus!=='odendi').reduce((s,a)=>s+(+a.price||0),0);
 
@@ -1258,7 +1410,7 @@ async function renderCustomerDetailDesktop(id) {
           <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
             <button class="save-btn" onclick="openAddAppointment('${c.id}','${escape(c.name)}','${escape(c.phone||'')}','${escape(c.address||'')}')">📅 Yeni İşlem Ekle</button>
             ${c.phone?`<div style="display:flex;gap:8px">
-              <a href="https://wa.me/90${(c.phone||'').replace(/\D/g,'').slice(-10)}" class="action-btn success" style="flex:1;text-decoration:none"><img src="wp.avif" class="wa-logo" alt="WA"> WhatsApp</a>
+              <a href="https://wa.me/90${(c.phone||'').replace(/\D/g,'').slice(-10)}" class="action-btn success" style="flex:1;text-decoration:none"><img src="https://img.icons8.com/?size=100&id=16713&format=png&color=000000" class="wa-logo" alt="WA"> WhatsApp</a>
               <a href="tel:${c.phone}" class="action-btn primary" style="flex:1;text-decoration:none;background:var(--surface2);box-shadow:none">📞 Ara</a>
             </div>`:''}
           </div>
@@ -1289,7 +1441,8 @@ async function renderCustomerDetailDesktop(id) {
 }
 
 async function renderApptDetailDesktop(id) {
-  const a = await DB.getAppointmentById(id);
+  const allAppts = await cachedGet('appointments', () => DB.getAppointments());
+  const a = allAppts.find(x => x.id === id) || await DB.getAppointmentById(id);
   if (!a) return `<div class="empty"><div class="empty-title">Bulunamadı</div></div>`;
   const svc  = getSvc(a.serviceType);
   const sens = getSens(a.sensitivity);
@@ -1317,7 +1470,7 @@ async function renderApptDetailDesktop(id) {
             </div>
           </div>
           <div style="display:flex;flex-direction:column;gap:10px">
-            ${a.customerPhone?`<a href="https://wa.me/90${a.customerPhone.replace(/\D/g,'').slice(-10)}" class="action-btn success" style="text-decoration:none"><img src="wp.avif" class="wa-logo" alt="WA"> WhatsApp</a>`:''}
+            ${a.customerPhone?`<a href="https://wa.me/90${a.customerPhone.replace(/\D/g,'').slice(-10)}" class="action-btn success" style="text-decoration:none"><img src="https://img.icons8.com/?size=100&id=16713&format=png&color=000000" class="wa-logo" alt="WA"> WhatsApp</a>`:''}
             ${a.customerPhone?`<a href="tel:${a.customerPhone}" class="action-btn primary" style="text-decoration:none">📞 Ara</a>`:''}
             <button class="save-btn danger" onclick="confirmDeleteAppt('${a.id}',true)">🗑️ Bu İşlemi Sil</button>
           </div>
