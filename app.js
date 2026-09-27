@@ -44,7 +44,7 @@ const getSvc = id => SERVICES.find(s => s.id === id) || SERVICES[SERVICES.length
 const getSens = id => SENSITIVITY.find(s => s.id === id) || SENSITIVITY[0];
 const getExpCat = id => EXPENSE_CATS.find(e => e.id === id) || EXPENSE_CATS[EXPENSE_CATS.length - 1];
 const isToday = iso => new Date(iso).toDateString() === new Date().toDateString();
-const escape = s => String(s || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+const escape = s => String(s || '').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ').replace(/\r/g, '');
 
 // ─── DURUM ────────────────────────────────────────────────
 let page = 'home';
@@ -880,8 +880,10 @@ async function saveAppointment() {
 // ═══════════════════════════════════════════════════════════
 //  MODAL: MÜŞTERİ EKLE / DÜZENLE
 // ═══════════════════════════════════════════════════════════
-function openAddCustomer(editId) {
-  const c = editId ? DB.getCustomerById(editId) : null;
+function openEditCustomer(id) { openAddCustomer(id); }
+
+async function openAddCustomer(editId) {
+  const c = editId ? await DB.getCustomerById(editId) : null;
   openModal(c ? '✏️ Müşteriyi Düzenle' : '👤 Yeni Müşteri', `
     <div class="form-group">
       <label class="form-label">Ad Soyad <span style="color:var(--error)">*</span></label>
@@ -907,7 +909,6 @@ function openAddCustomer(editId) {
   `);
 }
 
-function openEditCustomer(id) { openAddCustomer(id); }
 
 async function saveCustomer(editId) {
   const name = document.getElementById('c_name').value.trim();
