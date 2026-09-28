@@ -738,8 +738,21 @@ async function renderFinance() {
 
   const totalIncome = incomes.reduce((s, i) => s + i.amount, 0);
   const totalExpense = expList.reduce((s, e) => s + e.amount, 0);
-  const totalGoldGrams = golds.reduce((s, g) => s + (g.type === 'add' ? g.grams : -g.grams), 0);
-  const totalGoldValue = totalGoldGrams * currentGoldPrice;
+  let totalGoldValue = 0;
+  let summaryParts = [];
+  const currIcons = { GOLD: '🪙', USD: '💵', EUR: '💶' };
+  
+  ['GOLD', 'USD', 'EUR'].forEach(curr => {
+    const items = golds.filter(g => (g.currency || 'GOLD') === curr);
+    const totalAmt = items.reduce((s, g) => s + (g.type === 'add' ? g.grams : -g.grams), 0);
+    if (totalAmt > 0 || curr === 'GOLD') {
+      const price = window.currentPrices ? window.currentPrices[curr] : (curr === 'GOLD' ? currentGoldPrice : 0);
+      totalGoldValue += totalAmt * price;
+      let label = curr === 'GOLD' ? totalAmt + 'gr' : (curr === 'USD' ? '$'+totalAmt : '€'+totalAmt);
+      summaryParts.push(currIcons[curr] + ' ' + label);
+    }
+  });
+  const summaryText = summaryParts.join(' | ');
   const net = totalIncome - totalExpense + totalGoldValue;
 
   let listHtml = '';
@@ -822,7 +835,7 @@ async function renderFinance() {
   </div>
   <div style="background:var(--warning-bg);border:1px solid var(--warning-border);border-radius:var(--r-md);padding:12px;margin:8px 16px 0;display:flex;justify-content:space-between;align-items:center">
     <div>
-      <div style="font-size:10px;color:var(--warning);font-weight:700;margin-bottom:4px">YATIRIM KASASI</div>
+      <div style="font-size:10px;color:var(--warning);font-weight:700;margin-bottom:4px">YATIRIM KASASI (${summaryText})</div>
       <div style="font-size:14px;font-weight:900;color:var(--warning)">${fmt(totalGoldValue)}</div>
     </div>
     <div style="text-align:right">
@@ -1492,8 +1505,21 @@ async function renderFinanceDesktop() {
 
   const totalIncome = incomes.reduce((s, i) => s + i.amount, 0);
   const totalExpense = expList.reduce((s, e) => s + e.amount, 0);
-  const totalGoldGrams = golds.reduce((s, g) => s + (g.type === 'add' ? g.grams : -g.grams), 0);
-  const totalGoldValue = totalGoldGrams * currentGoldPrice;
+  let totalGoldValue = 0;
+  let summaryParts = [];
+  const currIcons = { GOLD: '🪙', USD: '💵', EUR: '💶' };
+  
+  ['GOLD', 'USD', 'EUR'].forEach(curr => {
+    const items = golds.filter(g => (g.currency || 'GOLD') === curr);
+    const totalAmt = items.reduce((s, g) => s + (g.type === 'add' ? g.grams : -g.grams), 0);
+    if (totalAmt > 0 || curr === 'GOLD') {
+      const price = window.currentPrices ? window.currentPrices[curr] : (curr === 'GOLD' ? currentGoldPrice : 0);
+      totalGoldValue += totalAmt * price;
+      let label = curr === 'GOLD' ? totalAmt + 'gr' : (curr === 'USD' ? '$'+totalAmt : '€'+totalAmt);
+      summaryParts.push(currIcons[curr] + ' ' + label);
+    }
+  });
+  const summaryText = summaryParts.join(' | ');
   const net = totalIncome - totalExpense + totalGoldValue;
 
   let listHtml = '';
