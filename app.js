@@ -58,14 +58,32 @@ let currentGoldPrice = 3000;
 
 async function fetchGoldPrice() {
   try {
-    const r = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://finans.truncgil.com/v3/today.json') + '&_=' + Date.now());
-    const d = await r.json();
-    const data = JSON.parse(d.contents);
-    const str = data['gram-altin'].Selling;
-    currentGoldPrice = parseFloat(str.split('.').join('').replace(',', '.'));
-    if (typeof render === 'function') {
-      const p = typeof page !== 'undefined' ? page : '';
-      if (p === 'home' || p === 'finance') render(); // Re-render to show updated price
+    let r;
+    try {
+      // 1. Try directly (if truncgil has CORS enabled)
+      r = await fetch('https://finans.truncgil.com/v3/today.json?_=' + Date.now());
+    } catch(err) {
+      // 2. Fallback to corsproxy.io
+      r = await fetch('https://corsproxy.io/?' + encodeURIComponent('https://finans.truncgil.com/v3/today.json?_=' + Date.now()));
+    }
+    
+    let data;
+    try {
+      data = await r.json();
+    } catch(err) {
+      // 3. Fallback to allorigins raw
+      const r2 = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://finans.truncgil.com/v3/today.json?_=' + Date.now()));
+      data = await r2.json();
+    }
+
+    if (data && data['gram-altin'] && data['gram-altin'].Selling) {
+      const str = data['gram-altin'].Selling;
+      currentGoldPrice = parseFloat(str.split('.').join('').replace(',', '.'));
+      
+      if (typeof render === 'function') {
+        const p = typeof page !== 'undefined' ? page : '';
+        if (p === 'home' || p === 'finance') render(); // Re-render to show updated price
+      }
     }
   } catch(e) { console.error('Gold fetch error:', e); }
 }
