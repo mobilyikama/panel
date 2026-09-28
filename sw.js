@@ -1,4 +1,4 @@
-const CACHE = 'mobilyikama-v22';
+const CACHE = 'mobilyikama-v23';
 const STATIC = ['./', './index.html', './style.css', './app.js', './manifest.json'];
 
 self.addEventListener('install', e => {
@@ -24,17 +24,14 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Statik dosyalar → cache-first
+  // Tüm dosyalar için Network-First (Her zaman en yeniyi çek, internet yoksa Cache kullan)
   e.respondWith(
-    caches.match(e.request).then(cached => {
-      if (cached) return cached;
-      return fetch(e.request).then(res => {
-        if (res && res.status === 200 && e.request.method === 'GET') {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
-        }
-        return res;
-      }).catch(() => caches.match('./index.html'));
-    })
+    fetch(e.request).then(res => {
+      if (res && res.status === 200 && e.request.method === 'GET') {
+        const clone = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+      }
+      return res;
+    }).catch(() => caches.match(e.request).then(cached => cached || caches.match('./index.html')))
   );
 });
