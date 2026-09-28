@@ -9,13 +9,14 @@
   <meta name="apple-mobile-web-app-title" content="Yıkama CRM"/>
   <meta name="description" content="Mobil Yıkama Müşteri ve Finans Takip Sistemi"/>
   <title>Mobil Yıkama CRM</title>
-    <link rel="icon" type="image/png" href="https://img.icons8.com/?size=100&id=0GDc84LPe2PP&format=png&color=000000"/>
+  <link rel="icon" type="image/png" href="https://img.icons8.com/?size=100&id=DrA0lgAQk0vw&format=png&color=000000"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="https://img.icons8.com/?size=100&id=DrA0lgAQk0vw&format=png&color=000000"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -430,6 +431,16 @@
       },
       deleteExpense: async (id) => {
         await deleteDoc(doc(db, 'users', uid, 'expenses', id));
+      },
+      getGolds: async () => {
+        const snap = await getDocs(collection(db, 'users', uid, 'gold'));
+        return snap.docs.map(d => d.data()).sort((a,b) => new Date(b.date||0)-new Date(a.date||0));
+      },
+      saveGold: async (g) => {
+        await setDoc(doc(db, 'users', uid, 'gold', g.id), g);
+      },
+      deleteGold: async (id) => {
+        await deleteDoc(doc(db, 'users', uid, 'gold', id));
       },
     };
   }
