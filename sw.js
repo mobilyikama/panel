@@ -1,4 +1,4 @@
-const CACHE = 'mobilyikama-v17';
+const CACHE = 'mobilyikama-v18';
 const STATIC = ['./', './index.html', './style.css', './app.js', './manifest.json'];
 
 self.addEventListener('install', e => {

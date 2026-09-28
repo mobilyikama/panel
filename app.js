@@ -56,7 +56,21 @@ let detailCustomerId = null;
 let detailApptId = null;
 let currentGoldPrice = 3000;
 
-fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://finans.truncgil.com/v3/today.json')).then(r=>r.json()).then(d=>{try{const data=JSON.parse(d.contents);currentGoldPrice=parseFloat(data['gram-altin'].Selling.replace('.','').replace(',','.'));}catch(e){}}).catch(e=>{});
+async function fetchGoldPrice() {
+  try {
+    const r = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://finans.truncgil.com/v3/today.json') + '&_=' + Date.now());
+    const d = await r.json();
+    const data = JSON.parse(d.contents);
+    const str = data['gram-altin'].Selling;
+    currentGoldPrice = parseFloat(str.split('.').join('').replace(',', '.'));
+    if (typeof render === 'function') {
+      const p = typeof page !== 'undefined' ? page : '';
+      if (p === 'home' || p === 'finance') render(); // Re-render to show updated price
+    }
+  } catch(e) { console.error('Gold fetch error:', e); }
+}
+fetchGoldPrice();
+setInterval(fetchGoldPrice, 60000);
 
 let goldChartInstance = null;
 function initGoldChart(goldList) {
