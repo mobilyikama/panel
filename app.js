@@ -54,16 +54,15 @@ let finMonth = 'all'; // 'all' veya 'YYYY-MM'
 let searchQ = '';
 let detailCustomerId = null;
 let detailApptId = null;
+window.currentPrices = { GOLD: 3000, USD: 34, EUR: 37 };
 let currentGoldPrice = 3000;
 
 async function fetchGoldPrice() {
   try {
     let r;
     try {
-      // 1. Try directly (if truncgil has CORS enabled)
       r = await fetch('https://finans.truncgil.com/v3/today.json?_=' + Date.now());
     } catch(err) {
-      // 2. Fallback to corsproxy.io
       r = await fetch('https://corsproxy.io/?' + encodeURIComponent('https://finans.truncgil.com/v3/today.json?_=' + Date.now()));
     }
     
@@ -71,7 +70,6 @@ async function fetchGoldPrice() {
     try {
       data = await r.json();
     } catch(err) {
-      // 3. Fallback to allorigins raw
       const r2 = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://finans.truncgil.com/v3/today.json?_=' + Date.now()));
       data = await r2.json();
     }
@@ -79,10 +77,13 @@ async function fetchGoldPrice() {
     if (data && data['gram-altin'] && data['gram-altin'].Selling) {
       const str = data['gram-altin'].Selling;
       currentGoldPrice = parseFloat(str.split('.').join('').replace(',', '.'));
+      window.currentPrices.GOLD = currentGoldPrice;
+      window.currentPrices.USD = parseFloat(data['USD'].Selling.split('.').join('').replace(',', '.'));
+      window.currentPrices.EUR = parseFloat(data['EUR'].Selling.split('.').join('').replace(',', '.'));
       
       if (typeof render === 'function') {
         const p = typeof page !== 'undefined' ? page : '';
-        if (p === 'home' || p === 'finance') render(); // Re-render to show updated price
+        if (p === 'home' || p === 'finance') render(); 
       }
     }
   } catch(e) { console.error('Gold fetch error:', e); }
@@ -746,18 +747,18 @@ async function renderFinance() {
     setTimeout(() => initGoldChart(goldList), 50);
     listHtml = `
       <div style="padding:16px;background:var(--surface);border-bottom:1px solid var(--border)">
-        <div style="font-size:12px;color:var(--text-muted);font-weight:700;margin-bottom:8px">ALTIN GRAFİĞİ (GELİŞİM)</div>
+        <div style="font-size:12px;color:var(--text-muted);font-weight:700;margin-bottom:8px">YATIRIM GRAFİĞİ (GELİŞİM - SADECE ALTIN)</div>
         <div style="height:150px;width:100%"><canvas id="goldChart"></canvas></div>
       </div>
-      ${goldList.length === 0 ? '<div class="empty"><div class="empty-title">Altın işlemi yok</div></div>' : goldList.map(g => `
+      ${goldList.length === 0 ? '<div class="empty"><div class="empty-title">Yatırım işlemi yok</div></div>' : goldList.map(g => `
       <div class="fin-item">
-        <div class="fin-item-icon" style="background:var(--warning-bg)">🪙</div>
+        <div class="fin-item-icon" style="background:var(--warning-bg)">${currIcons[g.currency||'GOLD']}</div>
         <div class="fin-item-body">
-          <div class="fin-item-name">${g.type === 'add' ? 'Altın Eklendi' : 'Altın Çıkarıldı'}</div>
+          <div class="fin-item-name">${g.type === 'add' ? 'Yatırım Eklendi' : 'Yatırım Çıkarıldı'}</div>
           <div class="fin-item-sub"><span>${fmtDT(g.date)}</span><span>·</span><span>${g.note || ''}</span></div>
         </div>
         <div class="fin-item-amount ${g.type === 'add' ? 'income' : 'expense'}" style="color:var(--warning)">
-          ${g.type === 'add' ? '+' : '-'}${g.grams} gr
+          ${g.type === 'add' ? '+' : '-'}${g.grams}${g.currency==='USD'||g.currency==='EUR'?'':' gr'}
         </div>
         <button onclick="event.stopPropagation();confirmDeleteGold('${g.id}')" style="background:none;border:none;color:var(--error);font-size:16px;cursor:pointer;padding:4px">🗑️</button>
       </div>`).join('')}
@@ -821,19 +822,19 @@ async function renderFinance() {
   </div>
   <div style="background:var(--warning-bg);border:1px solid var(--warning-border);border-radius:var(--r-md);padding:12px;margin:8px 16px 0;display:flex;justify-content:space-between;align-items:center">
     <div>
-      <div style="font-size:10px;color:var(--warning);font-weight:700;margin-bottom:4px">ALTIN KASASI (${totalGoldGrams} gr)</div>
+      <div style="font-size:10px;color:var(--warning);font-weight:700;margin-bottom:4px">YATIRIM KASASI</div>
       <div style="font-size:14px;font-weight:900;color:var(--warning)">${fmt(totalGoldValue)}</div>
     </div>
     <div style="text-align:right">
       <div style="font-size:10px;color:var(--text-muted);font-weight:600">GÜNCEL KUR</div>
-      <div style="font-size:12px;font-weight:700;color:var(--text)">${fmt(currentGoldPrice)} / gr</div>
+      <div style="font-size:12px;font-weight:700;color:var(--text)">Canlı Kurlar</div>
     </div>
   </div>
 
   <div class="fin-tabs">
     <button class="fin-tab income ${finTab === 'income' ? 'active' : ''}" onclick="finTab='income';updateTopBar();render()">💰 Gelirler</button>
     <button class="fin-tab expense ${finTab === 'expense' ? 'active' : ''}" onclick="finTab='expense';updateTopBar();render()">📉 Giderler</button>
-    <button class="fin-tab gold ${finTab === 'gold' ? 'active' : ''}" style="${finTab === 'gold' ? 'color:var(--warning);border-bottom-color:var(--warning)' : ''}" onclick="finTab='gold';updateTopBar();render()">🪙 Altın</button>
+    <button class="fin-tab gold ${finTab === 'gold' ? 'active' : ''}" style="${finTab === 'gold' ? 'color:var(--warning);border-bottom-color:var(--warning)' : ''}" onclick="finTab='gold';updateTopBar();render()">💎 Yatırım</button>
   </div>
 
   <div style="background:var(--surface);border-radius:var(--r-lg);margin:0 16px;border:1px solid var(--border);overflow:hidden">
@@ -1054,6 +1055,8 @@ async function openAddIncome() {
         <select id="i_currency" class="form-input" style="flex:1" onchange="document.getElementById('i_cust_wrap').style.display = this.value === 'TRY' ? 'block' : 'none'">
           <option value="TRY">₺ TL</option>
           <option value="GOLD">🪙 Altın (gr)</option>
+          <option value="USD">💵 Dolar ($)</option>
+          <option value="EUR">💶 Euro (€)</option>
         </select>
       </div>
     </div>
@@ -1083,17 +1086,18 @@ async function saveIncome() {
   const desc = document.getElementById('i_desc').value.trim();
   const dateVal = document.getElementById('i_date').value;
 
-  if (currency === 'GOLD') {
+  if (currency === 'GOLD' || currency === 'USD' || currency === 'EUR') {
     const g = {
       id: uid(),
       type: 'add',
       grams: amt,
-      note: desc || 'Altın Geliri',
+      currency: currency,
+      note: desc || (currency === 'GOLD' ? 'Altın Geliri' : currency === 'USD' ? 'Dolar Geliri' : 'Euro Geliri'),
       date: dateVal ? dateVal + 'T12:00:00Z' : new Date().toISOString()
     };
     await window.DB.saveGold(g);
     invalidateCache('gold');
-    showToast('Altın geliri eklendi');
+    showToast('Yatırım eklendi');
     closeModal();
     render();
     return;
@@ -1132,6 +1136,8 @@ function openAddExpense() {
         <select id="e_currency" class="form-input" style="flex:1" onchange="document.getElementById('e_cat_wrap').style.display = this.value === 'TRY' ? 'block' : 'none'">
           <option value="TRY">₺ TL</option>
           <option value="GOLD">🪙 Altın (gr)</option>
+          <option value="USD">💵 Dolar ($)</option>
+          <option value="EUR">💶 Euro (€)</option>
         </select>
       </div>
     </div>
@@ -1159,17 +1165,18 @@ async function saveExpense() {
   const currency = document.getElementById('e_currency').value;
   const dateVal = document.getElementById('e_date').value;
 
-  if (currency === 'GOLD') {
+  if (currency === 'GOLD' || currency === 'USD' || currency === 'EUR') {
     const g = {
       id: uid(),
       type: 'remove',
       grams: amt,
-      note: 'Altın Gideri / Bozdurma',
+      currency: currency,
+      note: currency === 'GOLD' ? 'Altın Çıkışı' : currency === 'USD' ? 'Dolar Çıkışı' : 'Euro Çıkışı',
       date: dateVal ? dateVal + 'T12:00:00Z' : new Date().toISOString()
     };
     await window.DB.saveGold(g);
     invalidateCache('gold');
-    showToast('Altın çıkarıldı');
+    showToast('Yatırım çıkarıldı');
     closeModal();
     render();
     return;
@@ -1497,15 +1504,15 @@ async function renderFinanceDesktop() {
         <div style="font-size:12px;color:var(--text-muted);font-weight:700;margin-bottom:8px">ALTIN GRAFİĞİ (GELİŞİM)</div>
         <div style="height:200px;width:100%"><canvas id="goldChart"></canvas></div>
       </div>
-      ${goldList.length === 0 ? '<div class="empty"><div class="empty-title">Altın işlemi yok</div></div>' : goldList.map(g => `
+      ${goldList.length === 0 ? '<div class="empty"><div class="empty-title">Yatırım işlemi yok</div></div>' : goldList.map(g => `
       <div class="fin-item">
-        <div class="fin-item-icon" style="background:var(--warning-bg)">🪙</div>
+        <div class="fin-item-icon" style="background:var(--warning-bg)">${currIcons[g.currency||'GOLD']}</div>
         <div class="fin-item-body">
-          <div class="fin-item-name">${g.type === 'add' ? 'Altın Eklendi' : 'Altın Çıkarıldı'}</div>
+          <div class="fin-item-name">${g.type === 'add' ? 'Yatırım Eklendi' : 'Yatırım Çıkarıldı'}</div>
           <div class="fin-item-sub"><span>${fmtDT(g.date)}</span><span>·</span><span>${g.note || ''}</span></div>
         </div>
         <div class="fin-item-amount ${g.type === 'add' ? 'income' : 'expense'}" style="color:var(--warning)">
-          ${g.type === 'add' ? '+' : '-'}${g.grams} gr
+          ${g.type === 'add' ? '+' : '-'}${g.grams}${g.currency==='USD'||g.currency==='EUR'?'':' gr'}
         </div>
         <button onclick="event.stopPropagation();confirmDeleteGold('${g.id}')" style="background:none;border:none;color:var(--error);font-size:16px;cursor:pointer;padding:4px;margin-left:6px">🗑️</button>
       </div>`).join('')}
@@ -1562,24 +1569,24 @@ async function renderFinanceDesktop() {
         <div class="fsi-count">${expList.length} kayıt</div>
       </div>
       <div class="fin-summary-item ${finTab === 'gold' ? 'active-gold' : ''}" style="background:var(--warning-bg);border-color:var(--warning-border);cursor:pointer" onclick="finTab='gold';updateTopBar();render()">
-        <div class="fsi-label" style="color:var(--warning)">🪙 Altın Kasası</div>
+        <div class="fsi-label" style="color:var(--warning)">💎 Yatırım Kasası</div>
         <div class="fsi-value" style="color:var(--warning)">${fmt(totalGoldValue)}</div>
-        <div class="fsi-count" style="color:var(--warning)">${totalGoldGrams} gram (Kur: ${fmt(currentGoldPrice)})</div>
+        <div class="fsi-count" style="color:var(--warning)">${summaryText}</div>
       </div>
       <div class="fin-summary-item" style="background:${net >= 0 ? 'var(--success-bg)' : 'var(--error-bg)'};border-color:${net >= 0 ? 'var(--success-border)' : 'var(--error-border)'}">
         <div class="fsi-label">🏆 Net Toplam</div>
         <div class="fsi-value" style="color:${net >= 0 ? 'var(--success-light)' : 'var(--error)'}">${fmt(net)}</div>
-        <div class="fsi-count" style="color:${net >= 0 ? 'var(--success)' : 'var(--error)'}">Altın dahil</div>
+        <div class="fsi-count" style="color:${net >= 0 ? 'var(--success)' : 'var(--error)'}">Yatırım dahil</div>
       </div>
     </div>
 
     <div class="desktop-card">
       <div class="desktop-card-header">
-        <div class="desktop-card-title">${finTab === 'income' ? '💰 Gelirler' : (finTab === 'expense' ? '📉 Giderler' : '🪙 Altın İşlemleri')}</div>
+        <div class="desktop-card-title">${finTab === 'income' ? '💰 Gelirler' : (finTab === 'expense' ? '📉 Giderler' : '🪙 Yatırım İşlemleri')}</div>
         <div style="display:flex;gap:8px">
           <button class="filter-chip ${finTab === 'income' ? 'active' : ''}" onclick="finTab='income';updateTopBar();render()">Gelirler</button>
           <button class="filter-chip ${finTab === 'expense' ? 'active' : ''}" style="${finTab === 'expense' ? 'background:var(--error-bg);border-color:var(--error-dark);color:var(--error)' : ''}" onclick="finTab='expense';updateTopBar();render()">Giderler</button>
-          <button class="filter-chip ${finTab === 'gold' ? 'active' : ''}" style="${finTab === 'gold' ? 'background:var(--warning-bg);border-color:var(--warning);color:var(--warning)' : ''}" onclick="finTab='gold';updateTopBar();render()">Altın</button>
+          <button class="filter-chip ${finTab === 'gold' ? 'active' : ''}" style="${finTab === 'gold' ? 'background:var(--warning-bg);border-color:var(--warning);color:var(--warning)' : ''}" onclick="finTab='gold';updateTopBar();render()">Yatırım</button>
         </div>
       </div>
       <div style="overflow:hidden;width:100%">
@@ -1709,7 +1716,18 @@ document.addEventListener('DOMContentLoaded', () => {
   updateClock();
   // Firebase auth state değiştiğinde render() çağrılacak (index.html)
 });
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { });
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    reg.onupdatefound = () => {
+      const w = reg.installing;
+      w.onstatechange = () => {
+        if (w.state === 'installed' && navigator.serviceWorker.controller) {
+          window.location.reload();
+        }
+      };
+    };
+  }).catch(() => { });
+}
 
 
 
@@ -1782,27 +1800,32 @@ async function loadHomeGoldStats() {
   const golds = await cachedGet('gold', () => window.DB.getGolds ? window.DB.getGolds() : []);
   const now = new Date();
   
-  const totalGoldGrams = golds.reduce((s, g) => s + (g.type === 'add' ? g.grams : -g.grams), 0);
-  const monthGolds = golds.filter(g => {
-    const d = new Date(g.date);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  });
-  const monthAdd = monthGolds.reduce((s, g) => s + (g.type === 'add' ? g.grams : 0), 0);
-
-  const totalValue = totalGoldGrams * currentGoldPrice;
+  let totalValue = 0;
+  let summaryParts = [];
+  const currIcons = { GOLD: '🪙', USD: '💵', EUR: '💶' };
   
+  ['GOLD', 'USD', 'EUR'].forEach(curr => {
+    const items = golds.filter(g => (g.currency || 'GOLD') === curr);
+    const totalAmt = items.reduce((s, g) => s + (g.type === 'add' ? g.grams : -g.grams), 0);
+    if (totalAmt > 0 || curr === 'GOLD') {
+      const price = window.currentPrices ? window.currentPrices[curr] : (curr === 'GOLD' ? currentGoldPrice : 0);
+      totalValue += totalAmt * price;
+      let label = curr === 'GOLD' ? totalAmt + 'gr' : (curr === 'USD' ? '$'+totalAmt : '€'+totalAmt);
+      summaryParts.push(currIcons[curr] + ' ' + label);
+    }
+  });
+
   const hv = document.getElementById('homeGoldValue');
   const hs = document.getElementById('homeGoldSub');
   if (hv) hv.textContent = fmt(totalValue);
-  if (hs) hs.textContent = `Toplam ${totalGoldGrams} gram · Bu ay +${monthAdd} gr`;
+  if (hs) hs.textContent = summaryParts.join(' | ');
 
   const dv = document.getElementById('deskGoldValue');
   const ds = document.getElementById('deskGoldSub');
   if (dv) dv.textContent = fmt(totalValue);
-  if (ds) ds.textContent = `Toplam ${totalGoldGrams} gram (Kur: ${fmt(currentGoldPrice)})`;
+  if (ds) ds.textContent = summaryParts.join(' | ') + ' (Canlı Kurlar)';
 }
 
-// Overwrite render to call loadHomeGoldStats
 const oldRender = render;
 render = async function() {
   await oldRender();
