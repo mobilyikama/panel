@@ -1,4 +1,4 @@
-const CACHE = 'mobilyikama-v16';
+const CACHE = 'mobilyikama-v17';
 const STATIC = ['./', './index.html', './style.css', './app.js', './manifest.json'];
 
 self.addEventListener('install', e => {
@@ -18,7 +18,8 @@ self.addEventListener('fetch', e => {
 
   // Firebase, Google APIs → her zaman network (önbelleğe alma)
   if (url.hostname.includes('firestore') || url.hostname.includes('googleapis') ||
-    url.hostname.includes('gstatic') || url.hostname.includes('firebaseapp')) {
+    url.hostname.includes('gstatic') || url.hostname.includes('firebaseapp') ||
+    url.hostname.includes('allorigins') || url.hostname.includes('truncgil')) {
     e.respondWith(fetch(e.request).catch(() => new Response('', { status: 503 })));
     return;
   }
