@@ -346,6 +346,23 @@ async function renderHome() {
     </div>
   </div>
 
+  
+  ${(() => {
+    // Generate Gold Card for mobile
+    // Calculate total gold since we didn't fetch it in renderHome initially, wait we need to fetch it in renderHome!
+    // We will do it inline or we have to add the fetch to renderHome.
+    return '';
+  })()}
+  <div class="net-card" id="homeGoldCard">
+    <div style="display:flex; justify-content:space-between; align-items:center; width:100%">
+      <div>
+        <div style="font-size:12px; font-weight:700; color:rgba(255,255,255,0.7); margin-bottom:4px">🪙 BU AY YATIRIM (ALTIN)</div>
+        <div style="font-size:24px; font-weight:900; color:#FBBF24" id="homeGoldValue">Yükleniyor...</div>
+        <div style="font-size:12px; color:rgba(255,255,255,0.7); margin-top:4px" id="homeGoldSub">Gram ve TL karşılığı</div>
+      </div>
+      <div style="font-size:32px; background:rgba(251,191,36,0.15); padding:12px; border-radius:12px; border:1px solid rgba(251,191,36,0.3)">📊</div>
+    </div>
+  </div>
   <div class="net-card">
     <div>
       <div class="net-label">🏆 Net Kazanç (Bu Ay)</div>
@@ -1262,6 +1279,17 @@ async function renderHomeDesktop() {
   <!-- DUAL COLUMN -->
   <div class="desktop-dual">
     <!-- Bugünkü Randevular -->
+    
+    <div class="desktop-card" style="background:linear-gradient(135deg, rgba(251,191,36,0.15), rgba(251,191,36,0.05)); border:1px solid rgba(251,191,36,0.3); margin-bottom:24px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:24px">
+        <div>
+          <div style="font-size:13px; font-weight:700; color:var(--text-sec); margin-bottom:6px">🪙 YATIRIM / ALTIN KASASI</div>
+          <div style="font-size:28px; font-weight:900; color:#FBBF24" id="deskGoldValue">Yükleniyor...</div>
+          <div style="font-size:13px; color:var(--text-sec); margin-top:6px" id="deskGoldSub">Bekleyiniz...</div>
+        </div>
+        <div style="font-size:48px; opacity:0.8">📊</div>
+      </div>
+    </div>
     <div class="desktop-card">
       <div class="desktop-card-header">
         <div class="desktop-card-title">📅 Bugünün Randevuları (${todayApps.length})</div>
@@ -1668,4 +1696,37 @@ async function deleteGold(id) {
   showToast('Altın işlemi silindi');
   closeModal();
   render();
+}
+
+async function loadHomeGoldStats() {
+  const golds = await cachedGet('gold', () => window.DB.getGolds ? window.DB.getGolds() : []);
+  const now = new Date();
+  
+  const totalGoldGrams = golds.reduce((s, g) => s + (g.type === 'add' ? g.grams : -g.grams), 0);
+  const monthGolds = golds.filter(g => {
+    const d = new Date(g.date);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+  const monthAdd = monthGolds.reduce((s, g) => s + (g.type === 'add' ? g.grams : 0), 0);
+
+  const totalValue = totalGoldGrams * currentGoldPrice;
+  
+  const hv = document.getElementById('homeGoldValue');
+  const hs = document.getElementById('homeGoldSub');
+  if (hv) hv.textContent = fmt(totalValue);
+  if (hs) hs.textContent = `Toplam ${totalGoldGrams} gram · Bu ay +${monthAdd} gr`;
+
+  const dv = document.getElementById('deskGoldValue');
+  const ds = document.getElementById('deskGoldSub');
+  if (dv) dv.textContent = fmt(totalValue);
+  if (ds) ds.textContent = `Toplam ${totalGoldGrams} gram (Kur: ${fmt(currentGoldPrice)})`;
+}
+
+// Overwrite render to call loadHomeGoldStats
+const oldRender = render;
+render = async function() {
+  await oldRender();
+  if (page === 'home') {
+    loadHomeGoldStats();
+  }
 }
