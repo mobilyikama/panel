@@ -1014,6 +1014,18 @@ async function openAddIncome() {
   const now = new Date().toISOString().slice(0, 10);
   openModal('💰 Gelir Ekle', `
     <div class="form-group">
+      <label class="form-label">Birim / Tutar</label>
+      <div style="display:flex;gap:8px">
+        <div class="price-wrap" style="flex:2">
+          <input id="i_amt" type="number" placeholder="0" min="0" step="0.01">
+        </div>
+        <select id="i_currency" class="form-input" style="flex:1" onchange="document.getElementById('i_cust_wrap').style.display = this.value === 'TRY' ? 'block' : 'none'">
+          <option value="TRY">₺ TL</option>
+          <option value="GOLD">🪙 Altın (gr)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group" id="i_cust_wrap">
       <label class="form-label">Müşteri (isteğe bağlı)</label>
       <select class="form-input" id="i_cust">
         <option value="">— Genel Gelir —</option>
@@ -1022,54 +1034,76 @@ async function openAddIncome() {
     </div>
     <div class="form-group">
       <label class="form-label">Açıklama</label>
-      <input class="form-input" id="i_desc" placeholder="Koltuk yıkama, halı vb.">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Tutar (₺)</label>
-      <div class="price-wrap">
-        <input id="i_amt" type="number" placeholder="0" min="0" step="1">
-        <span class="price-wrap-unit">₺</span>
-      </div>
+      <input class="form-input" id="i_desc" placeholder="Satış, yatırım vb.">
     </div>
     <div class="form-group">
       <label class="form-label">Tarih</label>
       <input class="form-input" id="i_date" type="date" value="${now}">
     </div>
-    <button class="save-btn success-btn" onclick="saveIncome()">＋ Geliri Kaydet</button>
+    <button class="save-btn success-btn" onclick="saveIncome()">＋ Kaydet</button>
   `);
 }
 
 async function saveIncome() {
   const amt = parseFloat(document.getElementById('i_amt').value) || 0;
   if (!amt) { showToast('Tutar giriniz!', 'error'); return; }
+  const currency = document.getElementById('i_currency').value;
+  const desc = document.getElementById('i_desc').value.trim();
+  const dateVal = document.getElementById('i_date').value;
+
+  if (currency === 'GOLD') {
+    const g = {
+      id: uid(),
+      type: 'add',
+      grams: amt,
+      note: desc || 'Altın Geliri',
+      date: dateVal ? dateVal + 'T12:00:00Z' : new Date().toISOString()
+    };
+    await window.DB.saveGold(g);
+    invalidateCache('gold');
+    showToast('Altın geliri eklendi');
+    closeModal();
+    render();
+    return;
+  }
+
   const custId = document.getElementById('i_cust').value;
   const customers = await cachedGet('customers', () => DB.getCustomers());
   const cust = custId ? customers.find(c => c.id === custId) : null;
-  // Manuel geliri randevu gibi kaydet
-  await DB.saveAppointment({
+  const a = {
     id: uid(),
-    customerId: custId || 'manuel',
-    customerName: cust?.name || 'Genel Gelir',
+    customerId: custId || null,
+    customerName: cust ? cust.name : null,
     serviceType: 'diger',
-    serviceLabel: document.getElementById('i_desc').value.trim() || 'Gelir',
-    serviceIcon: '💰',
-    serviceCustom: '',
-    sensitivity: 'yok',
+    serviceLabel: desc || 'Genel Gelir',
     price: amt,
-    notes: '',
-    duration: '',
+    date: dateVal ? dateVal + 'T12:00:00Z' : new Date().toISOString(),
     paymentStatus: 'odendi',
-    date: new Date(document.getElementById('i_date').value || new Date()).toISOString(),
-    createdAt: new Date().toISOString(),
-  });
-  invalidateCache('appointments'); // Önbelleği temizle
-  closeModal(); showToast('Gelir kaydedildi ✓', 'success'); render();
+    sensitivity: 'yok'
+  };
+  await DB.saveAppointment(a);
+  invalidateCache('appointments');
+  showToast('Gelir kaydedildi');
+  closeModal();
+  render();
 }
 
 function openAddExpense() {
   const now = new Date().toISOString().slice(0, 10);
   openModal('📉 Gider Ekle', `
     <div class="form-group">
+      <label class="form-label">Birim / Tutar</label>
+      <div style="display:flex;gap:8px">
+        <div class="price-wrap" style="flex:2">
+          <input id="e_amt" type="number" placeholder="0" min="0" step="0.01">
+        </div>
+        <select id="e_currency" class="form-input" style="flex:1" onchange="document.getElementById('e_cat_wrap').style.display = this.value === 'TRY' ? 'block' : 'none'">
+          <option value="TRY">₺ TL</option>
+          <option value="GOLD">🪙 Altın (gr)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group" id="e_cat_wrap">
       <label class="form-label">Gider Kategorisi</label>
       <div class="option-grid" id="expGrid">
         ${EXPENSE_CATS.map((e, i) => `<button class="option-pill ${i === 0 ? 'selected' : ''}" data-exp="${e.id}" onclick="selectPill('#expGrid','exp','${e.id}')">${e.icon} ${e.label}</button>`).join('')}
@@ -1077,37 +1111,51 @@ function openAddExpense() {
     </div>
     <div class="form-group">
       <label class="form-label">Açıklama</label>
-      <input class="form-input" id="e_desc" placeholder="Örn: Fairy deterjan, 5L">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Tutar (₺)</label>
-      <div class="price-wrap">
-        <input id="e_amt" type="number" placeholder="0" min="0" step="1">
-        <span class="price-wrap-unit">₺</span>
-      </div>
+      <input class="form-input" id="e_desc" placeholder="Örn: Deterjan, altın bozdurma vb.">
     </div>
     <div class="form-group">
       <label class="form-label">Tarih</label>
       <input class="form-input" id="e_date" type="date" value="${now}">
     </div>
-    <button class="save-btn danger" onclick="saveExpense()">－ Gideri Kaydet</button>
+    <button class="save-btn danger" onclick="saveExpense()">－ Kaydet</button>
   `);
 }
 
 async function saveExpense() {
   const amt = parseFloat(document.getElementById('e_amt').value) || 0;
   if (!amt) { showToast('Tutar giriniz!', 'error'); return; }
-  const catId = document.querySelector('#expGrid .option-pill.selected')?.dataset.exp || 'diger';
-  const cat = getExpCat(catId);
-  await DB.saveExpense({
-    id: uid(), category: catId, label: cat.label,
-    desc: document.getElementById('e_desc').value.trim(),
+  const currency = document.getElementById('e_currency').value;
+  const dateVal = document.getElementById('e_date').value;
+
+  if (currency === 'GOLD') {
+    const g = {
+      id: uid(),
+      type: 'remove',
+      grams: amt,
+      note: 'Altın Gideri / Bozdurma',
+      date: dateVal ? dateVal + 'T12:00:00Z' : new Date().toISOString()
+    };
+    await window.DB.saveGold(g);
+    invalidateCache('gold');
+    showToast('Altın çıkarıldı');
+    closeModal();
+    render();
+    return;
+  }
+
+  const catEl = document.querySelector('#catGrid .selected');
+  const cat = catEl ? catEl.dataset.cat : 'diger';
+  const e = {
+    id: uid(),
+    category: cat,
     amount: amt,
-    date: new Date(document.getElementById('e_date').value || new Date()).toISOString(),
-    createdAt: new Date().toISOString(),
-  });
-  invalidateCache('expenses'); // Önbelleği temizle
-  closeModal(); showToast('Gider kaydedildi', 'info'); render();
+    date: dateVal ? dateVal + 'T12:00:00Z' : new Date().toISOString()
+  };
+  await DB.saveExpense(e);
+  invalidateCache('expenses');
+  showToast('Gider kaydedildi');
+  closeModal();
+  render();
 }
 
 // ═══════════════════════════════════════════════════════════
